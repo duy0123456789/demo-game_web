@@ -170,6 +170,8 @@ async function main() {
     scene.invulnTimer = 0;
     scene.player.stats.hp = 1;
     enemy.setPosition(scene.player.x, scene.player.y);
+    enemy.stats.hp = 9999;
+    enemy.stats.maxHp = 9999;
     return { playerHp: scene.player.stats.hp, enemyPlaced: true };
   });
   console.log('DEFEAT SETUP TEST:', JSON.stringify(defeat));

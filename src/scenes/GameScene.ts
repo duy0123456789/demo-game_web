@@ -350,7 +350,7 @@ private updateXpOrbs(delta: number): void {
   }
 
   private gainXp(rawValue: number): void {
-    this.xp += Math.round(rawValue * this.player.stats.xpMultiplier);
+    this.xp += Math.round(rawValue * this.player.stats.xpMultiplier * 2);
     let leveled = false;
     while (this.xp >= this.xpToNext) {
       this.xp -= this.xpToNext;

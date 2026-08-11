@@ -9,6 +9,9 @@ interface SpawnWave {
   perSpawn: number;
 }
 
+const HP_FACTOR = 1 / 3;
+const SPEED_FACTOR = 0.7;
+
 export class EnemySpawner {
   private readonly scene: Phaser.Scene;
   private readonly group: Phaser.Physics.Arcade.Group;
@@ -76,10 +79,10 @@ export class EnemySpawner {
     const scale = this.difficultyMultiplier();
     const enemy = new Enemy(this.scene, x, y, {
       stats: {
-        maxHp: Math.round(type.maxHp * scale.hp),
-        hp: Math.round(type.maxHp * scale.hp),
+        maxHp: Math.max(1, Math.round(type.maxHp * scale.hp * HP_FACTOR)),
+        hp: Math.max(1, Math.round(type.maxHp * scale.hp * HP_FACTOR)),
         damage: Math.round(type.damage * scale.damage),
-        speed: type.speed * scale.speed,
+        speed: type.speed * scale.speed * SPEED_FACTOR,
         xpValue: type.xpValue,
       },
       radius: type.radius,
