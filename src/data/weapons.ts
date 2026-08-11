@@ -17,6 +17,7 @@ export interface WeaponData {
   rarity: Rarity;
   bulletColor: number;
   spreadAngle: number;
+  price: number;
 }
 
 export const WEAPONS: readonly WeaponData[] = [
@@ -35,6 +36,7 @@ export const WEAPONS: readonly WeaponData[] = [
     rarity: 'common',
     bulletColor: 0xffe08a,
     spreadAngle: 6,
+    price: 0,
   },
   {
     id: 'smg',
@@ -51,6 +53,7 @@ export const WEAPONS: readonly WeaponData[] = [
     rarity: 'rare',
     bulletColor: 0xffd23c,
     spreadAngle: 10,
+    price: 80,
   },
   {
     id: 'shotgun',
@@ -67,6 +70,7 @@ export const WEAPONS: readonly WeaponData[] = [
     rarity: 'rare',
     bulletColor: 0xffb020,
     spreadAngle: 34,
+    price: 140,
   },
   {
     id: 'rifle',
@@ -83,6 +87,7 @@ export const WEAPONS: readonly WeaponData[] = [
     rarity: 'epic',
     bulletColor: 0xb8f0ff,
     spreadAngle: 4,
+    price: 240,
   },
   {
     id: 'laser',
@@ -99,6 +104,7 @@ export const WEAPONS: readonly WeaponData[] = [
     rarity: 'legendary',
     bulletColor: 0xff6adf,
     spreadAngle: 1,
+    price: 400,
   },
 ];
 

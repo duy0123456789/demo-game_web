@@ -11,9 +11,9 @@ interface MenuButtonDef {
 
 const MENU_BUTTONS: MenuButtonDef[] = [
   { label: 'PLAY', run: (s) => s.showPlay() },
-  { label: 'HEROES', run: (s) => s.toast('COMING SOON', '#ffb020') },
-  { label: 'WEAPONS', run: (s) => s.toast('COMING SOON', '#ffb020') },
-  { label: 'UPGRADES', run: (s) => s.toast('COMING SOON', '#ffb020') },
+  { label: 'HEROES', run: (s) => s.scene.start(SceneKey.Heroes) },
+  { label: 'WEAPONS', run: (s) => s.scene.start(SceneKey.Weapons) },
+  { label: 'UPGRADES', run: (s) => s.scene.start(SceneKey.Upgrades) },
   { label: 'SETTINGS', run: (s) => s.toast('COMING SOON', '#ffb020') },
 ];
 

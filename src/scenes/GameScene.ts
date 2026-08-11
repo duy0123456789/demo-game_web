@@ -14,6 +14,7 @@ import {
 } from '../systems/UpgradeSystem';
 import type { UpgradeKind, UpgradeOption } from '../systems/UpgradeSystem';
 import { weaponById } from '../data/weapons';
+import { heroById } from '../data/heroes';
 import { saveManager } from '../systems/SaveManager';
 import { Joystick } from '../ui/Joystick';
 import { UpgradePanel } from '../ui/UpgradePanel';
@@ -86,6 +87,7 @@ export class GameScene extends Phaser.Scene {
     this.createDecorations(worldW, worldH);
 
     this.player = new Player(this, worldW / 2, worldH / 2);
+    this.applyMetaStats();
 
     this.enemies = this.physics.add.group({ classType: Enemy, runChildUpdate: false });
     this.spawner = new EnemySpawner(this, this.enemies, this.player, ENEMY_MAX);
@@ -97,7 +99,7 @@ export class GameScene extends Phaser.Scene {
       this,
       this.player,
       this.enemies,
-      weaponById(this.registry.get('weaponId') as string | undefined ?? 'pistol'),
+      weaponById(saveManager.weaponEquipped),
       {
         onEnemyKilled: (enemy, xpValue, x, y) => this.onEnemyKilled(enemy, xpValue, x, y),
       },
@@ -392,6 +394,23 @@ private updateXpOrbs(delta: number): void {
     this.runOver = false;
     this.invulnTimer = 0;
     this.coinsAtStart = saveManager.coins;
+  }
+
+  private applyMetaStats(): void {
+    const hero = heroById(saveManager.heroId);
+    const s = this.player.stats;
+    s.maxHp = hero.maxHp;
+    s.moveSpeed = hero.moveSpeed;
+    s.damage = hero.damage;
+    s.criticalChance = hero.criticalChance;
+    this.player.setTint(hero.skinTint);
+
+    const perm = saveManager.permUpgrades;
+    s.damage *= 1 + 0.04 * (perm['damage'] ?? 0);
+    s.maxHp += 10 * (perm['maxHp'] ?? 0);
+    s.moveSpeed *= 1 + 0.03 * (perm['moveSpeed'] ?? 0);
+    s.xpMultiplier *= 1 + 0.05 * (perm['xpGain'] ?? 0);
+    s.hp = s.maxHp;
   }
 
   private onUpgradePicked(opt: UpgradeOption): void {

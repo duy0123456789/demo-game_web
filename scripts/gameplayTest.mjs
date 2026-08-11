@@ -183,6 +183,95 @@ async function main() {
   });
   console.log('DEFEAT TEST:', JSON.stringify(defeatResult));
 
+  await page.evaluate(() => {
+    window.__pg.scene.getScene('ResultScene').scene.start('MainMenuScene');
+  });
+  await wait(700);
+
+  await page.evaluate(() => {
+    window.__pg.scene.getScene('MainMenuScene').scene.start('HeroScene');
+  });
+  await wait(500);
+  const heroSel = await page.evaluate(() => {
+    const s = window.__pg.scene.getScene('HeroScene');
+    const cards = s.children.list.filter((g) => g.type === 'Container');
+    if (cards.length < 3) return { cardCount: cards.length };
+    cards[1].emit('pointerup');
+    return { cardCount: cards.length };
+  });
+  await wait(500);
+  const heroCheck = await page.evaluate(() => {
+    return { heroId: window.__save.heroId, heroSceneActive: window.__pg.scene.getScene('HeroScene').scene.isActive() };
+  });
+  console.log('HERO TEST:', JSON.stringify({ heroSel, heroCheck }));
+
+  await page.evaluate(() => {
+    window.__pg.scene.getScene('HeroScene').scene.start('WeaponScene');
+    window.__save.addCoins(500);
+  });
+  await wait(500);
+  const weaponBuy = await page.evaluate(() => {
+    const s = window.__pg.scene.getScene('WeaponScene');
+    const rows = s.children.list.filter((g) => g.type === 'Container');
+    const shotgunRow = rows.find((r) => r.list.some((g) => g.type === 'Text' && /SHOTGUN/.test(g.text)));
+    if (!shotgunRow) return { found: false, rows: rows.length };
+    const buyBtn = shotgunRow.list.find((g) => g.type === 'Container' && g.list.some((t) => /BUY/.test(t.text)));
+    if (!buyBtn) return { found: true, hadBuyBtn: false };
+    buyBtn.emit('pointerover');
+    buyBtn.emit('pointerup');
+    return { found: true, hadBuyBtn: true };
+  });
+  await wait(500);
+  const weaponCheck = await page.evaluate(() => {
+    return {
+      ownsShotgun: window.__save.ownsWeapon('shotgun'),
+      equipped: window.__save.weaponEquipped,
+      coins: window.__save.coins,
+    };
+  });
+  console.log('WEAPON TEST:', JSON.stringify({ weaponBuy, weaponCheck }));
+
+  await page.evaluate(() => {
+    window.__pg.scene.getScene('WeaponScene').scene.start('UpgradeScene');
+  });
+  await wait(500);
+  const permBuy = await page.evaluate(() => {
+    const s = window.__pg.scene.getScene('UpgradeScene');
+    const rows = s.children.list.filter((g) => g.type === 'Container');
+    const damageRow = rows.find((r) => r.list.some((g) => g.type === 'Text' && g.text === 'DAMAGE'));
+    if (!damageRow) return { found: false, rows: rows.length };
+    const buyBtn = damageRow.list.find((g) => g.type === 'Container' && g.list.some((t) => /BUY/.test(t.text)));
+    if (!buyBtn) return { found: true, hadBuyBtn: false };
+    buyBtn.emit('pointerover');
+    buyBtn.emit('pointerup');
+    return { found: true, hadBuyBtn: true };
+  });
+  await wait(500);
+  const permCheck = await page.evaluate(() => {
+    return {
+      dmgLevel: window.__save.permLevel('damage'),
+      coins: window.__save.coins,
+    };
+  });
+  console.log('PERM UPGRADE TEST:', JSON.stringify({ permBuy, permCheck }));
+
+  await page.evaluate(() => {
+    window.__pg.scene.getScene('UpgradeScene').scene.start('GameScene');
+  });
+  await wait(2500);
+  const metaInGame = await page.evaluate(() => {
+    const s = window.__pg.scene.getScene('GameScene');
+    return {
+      maxHp: s.player.stats.maxHp,
+      hp: s.player.stats.hp,
+      damage: Math.round(s.player.stats.damage * 100) / 100,
+      moveSpeed: s.player.stats.moveSpeed,
+      weapon: s.combat.weapon.id,
+      active: s.scene.isActive(),
+    };
+  });
+  console.log('META IN GAME TEST:', JSON.stringify(metaInGame));
+
   console.log('errors:', errs.length);
   for (const e of errs) console.log('ERR:', e);
 
