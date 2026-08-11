@@ -11,6 +11,8 @@ export const TEX = {
   player: 'sprite-player',
   rock: 'sprite-rock',
   enemyCircle: 'sprite-enemy',
+  bullet: 'tex-bullet',
+  xp: 'tex-xp',
 } as const;
 
 const PLAYER_ROWS: string[] = [
@@ -86,6 +88,8 @@ export class BootScene extends Phaser.Scene {
     buildPixelSprite(this, TEX.player, PLAYER_ROWS, PLAYER_PALETTE);
     buildPixelSprite(this, TEX.rock, ROCK_ROWS, ROCK_PALETTE);
     buildPixelSprite(this, TEX.enemyCircle, ENEMY_ROWS, ENEMY_PALETTE);
+    this.createBulletTexture();
+    this.createXpTexture();
     this.scene.start(SceneKey.Preload);
   }
 
@@ -170,6 +174,28 @@ export class BootScene extends Phaser.Scene {
     g.fillStyle(0xfff0b0, 1);
     g.fillPoints(starPoints(14, 12, 6, 3, 5), true);
     g.generateTexture(TEX.star, size, size);
+    g.destroy();
+  }
+
+  private createBulletTexture(): void {
+    const g = this.make.graphics({ x: 0, y: 0 }, false);
+    g.fillStyle(0xffffff, 1);
+    g.fillRect(0, 2, 7, 2);
+    g.fillRect(1, 1, 6, 4);
+    g.fillRect(7, 1, 3, 1);
+    g.fillRect(7, 4, 3, 1);
+    g.generateTexture(TEX.bullet, 12, 6);
+    g.destroy();
+  }
+
+  private createXpTexture(): void {
+    const size = 9;
+    const g = this.make.graphics({ x: 0, y: 0 }, false);
+    g.fillStyle(0x2ee6a8, 1);
+    g.fillCircle(4.5, 4.5, 4.5);
+    g.fillStyle(0x9dffdf, 1);
+    g.fillCircle(3, 3, 2.2);
+    g.generateTexture(TEX.xp, size, size);
     g.destroy();
   }
 }

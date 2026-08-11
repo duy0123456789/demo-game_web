@@ -3,6 +3,8 @@ import { isPortrait, SceneKey, UI, WORLD } from '../config/gameConfig';
 import { Player } from '../entities/Player';
 import { Enemy } from '../entities/Enemy';
 import { EnemySpawner } from '../systems/EnemySpawner';
+import { CombatSystem } from '../systems/CombatSystem';
+import { weaponById } from '../data/weapons';
 import { Joystick } from '../ui/Joystick';
 import { TEX } from './BootScene';
 
@@ -24,6 +26,9 @@ export class GameScene extends Phaser.Scene {
   };
   private enemies!: Phaser.Physics.Arcade.Group;
   private spawner!: EnemySpawner;
+  private combat!: CombatSystem;
+  private xpOrbs!: Phaser.Physics.Arcade.Group;
+  private killCount = 0;
   private invulnTimer = 0;
   private hpBarBg!: Phaser.GameObjects.Rectangle;
   private hpBarFill!: Phaser.GameObjects.Rectangle;
@@ -51,6 +56,19 @@ export class GameScene extends Phaser.Scene {
 
     this.enemies = this.physics.add.group({ classType: Enemy, runChildUpdate: false });
     this.spawner = new EnemySpawner(this, this.enemies, this.player, ENEMY_MAX);
+    this.xpOrbs = this.physics.add.group({
+      classType: Phaser.Physics.Arcade.Image,
+      allowGravity: false,
+    });
+    this.combat = new CombatSystem(
+      this,
+      this.player,
+      this.enemies,
+      weaponById(this.registry.get('weaponId') as string | undefined ?? 'pistol'),
+      {
+        onEnemyKilled: (enemy, xpValue, x, y) => this.onEnemyKilled(enemy, xpValue, x, y),
+      },
+    );
 
     this.setupCamera(width, height, worldW, worldH);
     this.setupInput();
@@ -63,6 +81,8 @@ export class GameScene extends Phaser.Scene {
 
     this.player.move(this.computeMoveInput());
     this.spawner.update(delta);
+    this.combat.update(delta);
+    this.updateXpOrbs(delta);
 
     const target = { x: this.player.x, y: this.player.y };
     const children = this.enemies.getChildren() as Enemy[];
@@ -174,6 +194,25 @@ export class GameScene extends Phaser.Scene {
     }
 
     return { x, y };
+  }
+
+  private onEnemyKilled(_enemy: Enemy, xpValue: number, x: number, y: number): void {
+    this.killCount += 1;
+    const orb = this.xpOrbs.get(x, y, TEX.xp) as Phaser.Physics.Arcade.Image | null;
+    if (orb) {
+      orb.setActive(true);
+      orb.setVisible(true);
+      orb.setData('xpValue', xpValue);
+    }
+  }
+
+private updateXpOrbs(delta: number): void {
+    const orbs = this.xpOrbs.getChildren() as Phaser.Physics.Arcade.Image[];
+    if (orbs.length === 0) return;
+    for (const orb of orbs) {
+      if (!orb.active) continue;
+      orb.angle += delta * 0.04;
+    }
   }
 
   private handleEnemyContact(time: number, delta: number): void {
