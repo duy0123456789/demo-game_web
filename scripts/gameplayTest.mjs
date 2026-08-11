@@ -67,7 +67,52 @@ async function main() {
   });
   console.log('FLIGHT TEST:', JSON.stringify(teleportCheck));
 
-  console.log('ORB PICKUP (phase5 stub) — orb magnet not yet active');
+  const pickup = await page.evaluate(async () => {
+    const scene = window.__pg.scene.getScene('GameScene');
+    const out = {};
+    const orb = scene.xpOrbs.getChildren(true)[0];
+    if (!orb) return { noOrb: true };
+    scene.xp = scene.xpToNext - 1;
+    orb.setPosition(scene.player.x + 40, scene.player.y);
+    out.orbDistBefore = Math.round(Math.hypot(orb.x - scene.player.x, orb.y - scene.player.y));
+    await new Promise((res) => scene.time.delayedCall(900, res));
+    out.xp = scene.xp;
+    out.level = scene.level;
+    out.levelUpSequence = scene.levelUpSequence;
+    out.panelShown = !!scene.upgradePanel && !!scene.upgradePanel.container;
+    out.worldPaused = scene.physics.world.isPaused;
+    return out;
+  });
+  console.log('PICKUP TEST:', JSON.stringify(pickup));
+
+  const pickUpgrade = await page.evaluate(async () => {
+    const scene = window.__pg.scene.getScene('GameScene');
+    const out = {};
+    const cards = scene.upgradePanel.container.list.filter((g) => g.type === 'Container');
+    out.cardCount = cards.length;
+    out.countsBefore = Object.fromEntries(scene.upgradeCounts);
+    out.damageBefore = scene.player.stats.damage;
+    if (cards.length > 0) cards[0].emit('pointerup');
+    await new Promise((res) => scene.time.delayedCall(200, res));
+    out.levelUpSequence = scene.levelUpSequence;
+    out.worldPaused = scene.physics.world.isPaused;
+    out.countsAfter = Object.fromEntries(scene.upgradeCounts);
+    out.damageAfter = scene.player.stats.damage;
+    return out;
+  });
+  console.log('UPGRADE PICK TEST:', JSON.stringify(pickUpgrade));
+
+  const hud = await page.evaluate(() => {
+    const scene = window.__pg.scene.getScene('GameScene');
+    return {
+      levelText: scene.levelText.text,
+      xpBarWidth: Math.round(scene.xpBarFill.width),
+      coinText: scene.coinText.text,
+      timerText: scene.timerText.text,
+    };
+  });
+  console.log('HUD TEST:', JSON.stringify(hud));
+
   console.log('errors:', errs.length);
   for (const e of errs) console.log('ERR:', e);
 

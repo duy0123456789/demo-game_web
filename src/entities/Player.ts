@@ -63,6 +63,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
       direction.x /= len;
       direction.y /= len;
     }
+    body.setMaxVelocity(speed, speed);
     body.setVelocity(direction.x * speed, direction.y * speed);
 
     if (direction.x < 0) {

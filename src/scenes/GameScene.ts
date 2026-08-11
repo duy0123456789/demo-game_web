@@ -4,8 +4,18 @@ import { Player } from '../entities/Player';
 import { Enemy } from '../entities/Enemy';
 import { EnemySpawner } from '../systems/EnemySpawner';
 import { CombatSystem } from '../systems/CombatSystem';
+import {
+  applyUpgrade,
+  buildUpgradeOption,
+  canStack,
+  rollRarity,
+  xpRequiredForLevel,
+} from '../systems/UpgradeSystem';
+import type { UpgradeKind, UpgradeOption } from '../systems/UpgradeSystem';
 import { weaponById } from '../data/weapons';
+import { saveManager } from '../systems/SaveManager';
 import { Joystick } from '../ui/Joystick';
+import { UpgradePanel } from '../ui/UpgradePanel';
 import { TEX } from './BootScene';
 
 const GRID_ALPHA = 0.5;
@@ -30,9 +40,21 @@ export class GameScene extends Phaser.Scene {
   private xpOrbs!: Phaser.Physics.Arcade.Group;
   private killCount = 0;
   private invulnTimer = 0;
+  private xp = 0;
+  private xpToNext = xpRequiredForLevel(1);
+  private level = 1;
+  private upgradeCounts = new Map<UpgradeKind, number>();
+  private upgradePanel: UpgradePanel | null = null;
+  private levelUpSequence = false;
   private hpBarBg!: Phaser.GameObjects.Rectangle;
   private hpBarFill!: Phaser.GameObjects.Rectangle;
   private hpText!: Phaser.GameObjects.Text;
+  private xpBarBg!: Phaser.GameObjects.Rectangle;
+  private xpBarFill!: Phaser.GameObjects.Rectangle;
+  private levelText!: Phaser.GameObjects.Text;
+  private coinText!: Phaser.GameObjects.Text;
+  private timerText!: Phaser.GameObjects.Text;
+  private elapsedMs = 0;
   private isTouchDevice = false;
   private useJoystick = false;
 
@@ -69,6 +91,7 @@ export class GameScene extends Phaser.Scene {
         onEnemyKilled: (enemy, xpValue, x, y) => this.onEnemyKilled(enemy, xpValue, x, y),
       },
     );
+    this.upgradePanel = new UpgradePanel(this, (opt) => this.onUpgradePicked(opt));
 
     this.setupCamera(width, height, worldW, worldH);
     this.setupInput();
@@ -78,6 +101,7 @@ export class GameScene extends Phaser.Scene {
 
   update(time: number, delta: number): void {
     if (!this.player || !this.player.active) return;
+    if (this.levelUpSequence) return;
 
     this.player.move(this.computeMoveInput());
     this.spawner.update(delta);
@@ -198,6 +222,7 @@ export class GameScene extends Phaser.Scene {
 
   private onEnemyKilled(_enemy: Enemy, xpValue: number, x: number, y: number): void {
     this.killCount += 1;
+    saveManager.addCoins(1);
     const orb = this.xpOrbs.get(x, y, TEX.xp) as Phaser.Physics.Arcade.Image | null;
     if (orb) {
       orb.setActive(true);
@@ -209,10 +234,93 @@ export class GameScene extends Phaser.Scene {
 private updateXpOrbs(delta: number): void {
     const orbs = this.xpOrbs.getChildren() as Phaser.Physics.Arcade.Image[];
     if (orbs.length === 0) return;
+    const px = this.player.x;
+    const py = this.player.y;
+    const magnet = this.player.stats.pickupRange;
     for (const orb of orbs) {
       if (!orb.active) continue;
+      const dx = px - orb.x;
+      const dy = py - orb.y;
+      const dist = Math.hypot(dx, dy);
+      if (dist <= magnet && dist > 14) {
+        const pull = Math.min(1, (magnet - dist) / magnet + 0.25);
+        const step = 340 * pull * (delta / 1000);
+        orb.setPosition(orb.x + (dx / dist) * step, orb.y + (dy / dist) * step);
+      }
       orb.angle += delta * 0.04;
+      if (dist < 14) {
+        const value = (orb.getData('xpValue') as number) ?? 1;
+        orb.setActive(false);
+        orb.setVisible(false);
+        this.gainXp(value);
+      }
     }
+  }
+
+  private gainXp(rawValue: number): void {
+    this.xp += Math.round(rawValue * this.player.stats.xpMultiplier);
+    let leveled = false;
+    while (this.xp >= this.xpToNext) {
+      this.xp -= this.xpToNext;
+      this.level += 1;
+      this.xpToNext = xpRequiredForLevel(this.level);
+      leveled = true;
+    }
+    if (leveled) this.triggerLevelUp();
+  }
+
+  private triggerLevelUp(): void {
+    if (this.levelUpSequence) return;
+    this.levelUpSequence = true;
+    this.time.delayedCall(90, () => {
+      if (!this.scene.isActive()) return;
+      const options = this.rollUpgradeOptions();
+      this.upgradePanel?.show(options, this.level);
+      this.physics.pause();
+    });
+  }
+
+  private rollUpgradeOptions(): UpgradeOption[] {
+    const available = this.availableKinds();
+    const options: UpgradeOption[] = [];
+    for (let i = 0; i < 3 && available.length > 0; i += 1) {
+      const idx = Math.floor(Math.random() * available.length);
+      const kind = available.splice(idx, 1)[0];
+      const stacked = this.upgradeCounts.get(kind) ?? 0;
+      options.push(buildUpgradeOption(kind, rollRarity(), stacked));
+    }
+    return options;
+  }
+
+  private availableKinds(): UpgradeKind[] {
+    const all = [
+      'damage',
+      'attackSpeed',
+      'maxHp',
+      'moveSpeed',
+      'criticalChance',
+      'projectile',
+      'attackRange',
+      'xpGain',
+      'pickupRange',
+      'bulletSpeed',
+      'lifesteal',
+      'criticalDamage',
+    ] as const;
+    const out: UpgradeKind[] = [];
+    for (const k of all) {
+      if (canStack(k, this.upgradeCounts.get(k) ?? 0)) out.push(k);
+    }
+    return out;
+  }
+
+  private onUpgradePicked(opt: UpgradeOption): void {
+    applyUpgrade(this.player, opt);
+    this.upgradeCounts.set(opt.kind, (this.upgradeCounts.get(opt.kind) ?? 0) + 1);
+    this.upgradePanel?.hide();
+    this.levelUpSequence = false;
+    this.physics.resume();
+    this.player.move({ x: 0, y: 0 });
   }
 
   private handleEnemyContact(time: number, delta: number): void {
@@ -258,12 +366,12 @@ private updateXpOrbs(delta: number): void {
     const h = 16;
     this.hpBarBg = this.add.rectangle(x0 + w / 2, y0, w, h, 0x0b0b16, 0.8).setScrollFactor(0).setDepth(1000);
     this.hpBarFill = this.add
-      .rectangle(x0 + w / 2, y0, w - 4, h - 4, 0x2ee6a8)
+      .rectangle(x0 + 2, y0, w - 4, h - 4, 0x2ee6a8)
       .setScrollFactor(0)
       .setDepth(1001)
-      .setOrigin(0.5);
+      .setOrigin(0, 0.5);
     this.hpText = this.add
-      .text(x0, y0 + h + 10, '', {
+      .text(x0, y0 + h + 8, '', {
         fontFamily: UI.fontFallback,
         fontSize: '11px',
         color: '#e8f6ff',
@@ -271,16 +379,60 @@ private updateXpOrbs(delta: number): void {
       .setScrollFactor(0)
       .setDepth(1001);
 
-    this.hpBarFill.setPosition(x0 + w / 2, y0);
-    this.hpBarFill.setOrigin(0, 0.5);
+    this.xpBarBg = this.add
+      .rectangle(x0 + w / 2, y0 + h + 34, w, 10, 0x0b0b16, 0.8)
+      .setScrollFactor(0)
+      .setDepth(1000);
+    this.xpBarFill = this.add
+      .rectangle(x0 + 2, y0 + h + 34, w - 4, 6, 0x4ec9ff)
+      .setScrollFactor(0)
+      .setDepth(1001)
+      .setOrigin(0, 0.5);
+
+    this.levelText = this.add
+      .text(viewW - 20, 14, '', {
+        fontFamily: UI.fontFallback,
+        fontSize: '13px',
+        color: '#ffd23c',
+      })
+      .setOrigin(1, 0)
+      .setScrollFactor(0)
+      .setDepth(1001);
+    this.coinText = this.add
+      .text(viewW - 20, 36, '', {
+        fontFamily: UI.fontFallback,
+        fontSize: '11px',
+        color: '#ffc832',
+      })
+      .setOrigin(1, 0)
+      .setScrollFactor(0)
+      .setDepth(1001);
+    this.timerText = this.add
+      .text(viewW / 2, 14, '', {
+        fontFamily: UI.fontFallback,
+        fontSize: '13px',
+        color: '#e8f6ff',
+      })
+      .setOrigin(0.5, 0)
+      .setScrollFactor(0)
+      .setDepth(1001);
   }
 
   private updateHud(): void {
+    this.elapsedMs += this.game.loop.delta;
     const ratio = Phaser.Math.Clamp(this.player.stats.hp / this.player.stats.maxHp, 0, 1);
     this.hpBarFill.width = (this.hpBarBg.width - 4) * ratio;
     const color = ratio > 0.5 ? 0x2ee6a8 : ratio > 0.25 ? 0xffb020 : 0xff5c5c;
     this.hpBarFill.setFillStyle(color);
     this.hpText.setText(`HP ${this.player.stats.hp}/${this.player.stats.maxHp}`);
+
+    this.xpBarFill.width = (this.xpBarBg.width - 4) * Phaser.Math.Clamp(this.xp / this.xpToNext, 0, 1);
+    this.levelText.setText(`LV ${this.level}`);
+    this.coinText.setText(`$ ${saveManager.coins}`);
+    const sec = Math.floor(this.elapsedMs / 1000);
+    const m = Math.floor(sec / 60);
+    const s = sec % 60;
+    this.timerText.setText(`${m}:${s.toString().padStart(2, '0')}`);
   }
 
   private createHint(viewW: number, viewH: number): void {
