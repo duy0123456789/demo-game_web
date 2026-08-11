@@ -113,6 +113,76 @@ async function main() {
   });
   console.log('HUD TEST:', JSON.stringify(hud));
 
+  await page.evaluate(() => {
+    const scene = window.__pg.scene.getScene('GameScene');
+    scene.elapsedMs = 4 * 60 * 1000;
+  });
+  await wait(500);
+  const bossSpawn = await page.evaluate(() => {
+    const scene = window.__pg.scene.getScene('GameScene');
+    const out = {
+      bossExists: !!scene.boss,
+      bossHp: scene.boss ? scene.boss.stats.maxHp : null,
+      hpBarVisible: scene.bossHpBarFill.visible,
+      bossX: scene.boss ? Math.round(scene.boss.x) : null,
+    };
+    if (scene.boss) scene.boss.stats.hp = 1;
+    return out;
+  });
+  console.log('BOSS TEST:', JSON.stringify(bossSpawn));
+
+  await page.evaluate(() => {
+    const scene = window.__pg.scene.getScene('GameScene');
+    if (scene.boss) scene.boss.setPosition(scene.player.x + 130, scene.player.y);
+  });
+  await wait(1800);
+  const bossDead = await page.evaluate(() => {
+    const scene = window.__pg.scene.getScene('GameScene');
+    return { bossAlive: scene.boss ? scene.boss.active : null, runOver: scene.runOver };
+  });
+  console.log('BOSS KILL TEST:', JSON.stringify(bossDead));
+
+  await wait(900);
+  const victory = await page.evaluate(() => {
+    const scene = window.__pg.scene.getScene('ResultScene');
+    const out = { sceneActive: scene.scene.isActive() };
+    if (scene.scene.isActive()) {
+      const r = scene.result;
+      out.victory = r.victory;
+      out.level = r.level;
+      out.kills = r.kills;
+      out.coinsEarned = r.coinsEarned;
+      const titles = scene.children.list.filter((g) => g.type === 'Text' && /VICTORY|DEFEATED/.test(g.text));
+      out.title = titles.length > 0 ? titles[0].text : null;
+    }
+    return out;
+  });
+  console.log('VICTORY TEST:', JSON.stringify(victory));
+
+  await page.evaluate(() => {
+    window.__pg.scene.getScene('ResultScene').scene.start('GameScene');
+  });
+  await wait(4500);
+  const defeat = await page.evaluate(() => {
+    const scene = window.__pg.scene.getScene('GameScene');
+    const enemy = scene.enemies.getChildren(true)[0];
+    if (!enemy) return { noEnemy: true };
+    scene.invulnTimer = 0;
+    scene.player.stats.hp = 1;
+    enemy.setPosition(scene.player.x, scene.player.y);
+    return { playerHp: scene.player.stats.hp, enemyPlaced: true };
+  });
+  console.log('DEFEAT SETUP TEST:', JSON.stringify(defeat));
+  await wait(1300);
+  const defeatResult = await page.evaluate(() => {
+    const resultScene = window.__pg.scene.getScene('ResultScene');
+    return {
+      resultActive: resultScene.scene.isActive(),
+      victory: resultScene.result ? resultScene.result.victory : null,
+    };
+  });
+  console.log('DEFEAT TEST:', JSON.stringify(defeatResult));
+
   console.log('errors:', errs.length);
   for (const e of errs) console.log('ERR:', e);
 

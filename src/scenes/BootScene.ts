@@ -11,6 +11,7 @@ export const TEX = {
   player: 'sprite-player',
   rock: 'sprite-rock',
   enemyCircle: 'sprite-enemy',
+  boss: 'sprite-boss',
   bullet: 'tex-bullet',
   xp: 'tex-xp',
 } as const;
@@ -74,6 +75,28 @@ const ENEMY_PALETTE: Record<string, number> = {
   F: 0xffffff,
 };
 
+const BOSS_ROWS: string[] = [
+  '...W....W....W...',
+  '..WWW..WWW..WWW..',
+  '.BBBBBBBBBBBBBBB.',
+  'BVBBBBBBBBBBBBVB.',
+  'BVBBBBBBBBBBBBVB.',
+  'BVVVVYYVVVYYVVVVB',
+  'BVVVYKKYVVYKKYVVB',
+  'BVVVVYYVVVYYVVVVB',
+  'BVVVVVVVVVVVVVVVB',
+  '.BBBBBBBBBBBBBBB.',
+  '..BBBBBBBBBBBBB..',
+];
+
+const BOSS_PALETTE: Record<string, number> = {
+  B: 0x4a1c6e,
+  V: 0x8c4acf,
+  W: 0xf0f0f8,
+  Y: 0xffd23c,
+  K: 0x0b0b16,
+};
+
 export class BootScene extends Phaser.Scene {
   constructor() {
     super(SceneKey.Boot);
@@ -88,6 +111,7 @@ export class BootScene extends Phaser.Scene {
     buildPixelSprite(this, TEX.player, PLAYER_ROWS, PLAYER_PALETTE);
     buildPixelSprite(this, TEX.rock, ROCK_ROWS, ROCK_PALETTE);
     buildPixelSprite(this, TEX.enemyCircle, ENEMY_ROWS, ENEMY_PALETTE);
+    buildPixelSprite(this, TEX.boss, BOSS_ROWS, BOSS_PALETTE);
     this.createBulletTexture();
     this.createXpTexture();
     this.scene.start(SceneKey.Preload);

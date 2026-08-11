@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import { isPortrait, SceneKey, UI, WORLD } from '../config/gameConfig';
 import { Player } from '../entities/Player';
 import { Enemy } from '../entities/Enemy';
+import { Boss } from '../entities/Boss';
 import { EnemySpawner } from '../systems/EnemySpawner';
 import { CombatSystem } from '../systems/CombatSystem';
 import {
@@ -16,6 +17,7 @@ import { weaponById } from '../data/weapons';
 import { saveManager } from '../systems/SaveManager';
 import { Joystick } from '../ui/Joystick';
 import { UpgradePanel } from '../ui/UpgradePanel';
+import type { ResultData } from './ResultScene';
 import { TEX } from './BootScene';
 
 const GRID_ALPHA = 0.5;
@@ -23,6 +25,8 @@ const ROCK_COUNT = 140;
 const PATCH_COUNT = 26;
 const ENEMY_MAX = 70;
 const INVULN_MS = 900;
+const RUN_DURATION_MS = 5 * 60 * 1000;
+const BOSS_SPAWN_MS = 4 * 60 * 1000;
 
 export class GameScene extends Phaser.Scene {
   private player!: Player;
@@ -55,6 +59,12 @@ export class GameScene extends Phaser.Scene {
   private coinText!: Phaser.GameObjects.Text;
   private timerText!: Phaser.GameObjects.Text;
   private elapsedMs = 0;
+  private boss: Boss | null = null;
+  private bossHpBarBg!: Phaser.GameObjects.Rectangle;
+  private bossHpBarFill!: Phaser.GameObjects.Rectangle;
+  private bossLabel!: Phaser.GameObjects.Text;
+  private runOver = false;
+  private coinsAtStart = 0;
   private isTouchDevice = false;
   private useJoystick = false;
 
@@ -66,6 +76,7 @@ export class GameScene extends Phaser.Scene {
     const { width, height } = this.scale.gameSize;
     const worldW = WORLD.width;
     const worldH = WORLD.height;
+    this.resetRunState();
     this.isTouchDevice = this.sys.game.device.input.touch;
     this.useJoystick = this.isTouchDevice && isPortrait();
 
@@ -92,6 +103,7 @@ export class GameScene extends Phaser.Scene {
       },
     );
     this.upgradePanel = new UpgradePanel(this, (opt) => this.onUpgradePicked(opt));
+    this.coinsAtStart = saveManager.coins;
 
     this.setupCamera(width, height, worldW, worldH);
     this.setupInput();
@@ -100,6 +112,7 @@ export class GameScene extends Phaser.Scene {
   }
 
   update(time: number, delta: number): void {
+    this.elapsedMs += delta;
     if (!this.player || !this.player.active) return;
     if (this.levelUpSequence) return;
 
@@ -115,6 +128,8 @@ export class GameScene extends Phaser.Scene {
     }
 
     this.handleEnemyContact(time, delta);
+    this.checkBossSpawn();
+    if (this.elapsedMs >= RUN_DURATION_MS) this.finishRun(true);
     this.updateHud();
   }
 
@@ -220,15 +235,66 @@ export class GameScene extends Phaser.Scene {
     return { x, y };
   }
 
-  private onEnemyKilled(_enemy: Enemy, xpValue: number, x: number, y: number): void {
+  private onEnemyKilled(enemy: Enemy, xpValue: number, x: number, y: number): void {
     this.killCount += 1;
     saveManager.addCoins(1);
+    if (enemy instanceof Boss) {
+      this.finishRun(true);
+      return;
+    }
     const orb = this.xpOrbs.get(x, y, TEX.xp) as Phaser.Physics.Arcade.Image | null;
     if (orb) {
       orb.setActive(true);
       orb.setVisible(true);
       orb.setData('xpValue', xpValue);
     }
+  }
+
+  private checkBossSpawn(): void {
+    if (this.boss || this.runOver || this.elapsedMs < BOSS_SPAWN_MS) return;
+    const angle = Phaser.Math.FloatBetween(0, Math.PI * 2);
+    const dist = Phaser.Math.FloatBetween(460, 560);
+    const x = Phaser.Math.Clamp(this.player.x + Math.cos(angle) * dist, 60, WORLD.width - 60);
+    const y = Phaser.Math.Clamp(this.player.y + Math.sin(angle) * dist, 60, WORLD.height - 60);
+    const boss = new Boss(this, x, y);
+    this.enemies.add(boss);
+    this.boss = boss;
+    this.cameras.main.shake(200, 0.006);
+
+    const skip = this.isTouchDevice ? 22 : 26;
+    const warn = this.add
+      .text(this.scale.gameSize.width / 2, this.scale.gameSize.height * 0.28, '!!! BOSS APPROACHING !!!', {
+        fontFamily: UI.fontFallback,
+        fontSize: `${skip}px`,
+        color: '#ff5c5c',
+      })
+      .setOrigin(0.5)
+      .setScrollFactor(0)
+      .setDepth(3000);
+    this.tweens.add({
+      targets: warn,
+      alpha: { from: 1, to: 0 },
+      delay: 900,
+      duration: 800,
+      onComplete: () => warn.destroy(),
+    });
+  }
+
+  private finishRun(victory: boolean): void {
+    if (this.runOver) return;
+    this.runOver = true;
+    this.levelUpSequence = true;
+    this.physics.pause();
+    const result: ResultData = {
+      victory,
+      level: this.level,
+      kills: this.killCount,
+      coinsEarned: saveManager.coins - this.coinsAtStart,
+      timeMs: this.elapsedMs,
+    };
+    this.time.delayedCall(500, () => {
+      this.scene.start(SceneKey.Result, result);
+    });
   }
 
 private updateXpOrbs(delta: number): void {
@@ -314,6 +380,20 @@ private updateXpOrbs(delta: number): void {
     return out;
   }
 
+  private resetRunState(): void {
+    this.killCount = 0;
+    this.xp = 0;
+    this.xpToNext = xpRequiredForLevel(1);
+    this.level = 1;
+    this.upgradeCounts = new Map();
+    this.levelUpSequence = false;
+    this.elapsedMs = 0;
+    this.boss = null;
+    this.runOver = false;
+    this.invulnTimer = 0;
+    this.coinsAtStart = saveManager.coins;
+  }
+
   private onUpgradePicked(opt: UpgradeOption): void {
     applyUpgrade(this.player, opt);
     this.upgradeCounts.set(opt.kind, (this.upgradeCounts.get(opt.kind) ?? 0) + 1);
@@ -356,6 +436,7 @@ private updateXpOrbs(delta: number): void {
 
     if (this.player.stats.hp <= 0) {
       this.player.disableBody(true, true);
+      this.finishRun(false);
     }
   }
 
@@ -416,10 +497,32 @@ private updateXpOrbs(delta: number): void {
       .setOrigin(0.5, 0)
       .setScrollFactor(0)
       .setDepth(1001);
+
+    const bossW = viewW * 0.42;
+    this.bossLabel = this.add
+      .text(viewW / 2, 44, 'BOSS', {
+        fontFamily: UI.fontFallback,
+        fontSize: '10px',
+        color: '#ff5c5c',
+      })
+      .setOrigin(0.5)
+      .setScrollFactor(0)
+      .setDepth(1001)
+      .setVisible(false);
+    this.bossHpBarBg = this.add
+      .rectangle(viewW / 2, 58, bossW, 12, 0x0b0b16, 0.85)
+      .setScrollFactor(0)
+      .setDepth(1000)
+      .setVisible(false);
+    this.bossHpBarFill = this.add
+      .rectangle(viewW / 2 - bossW / 2 + 2, 58, bossW - 4, 8, 0xff5c5c)
+      .setScrollFactor(0)
+      .setDepth(1001)
+      .setOrigin(0, 0.5)
+      .setVisible(false);
   }
 
   private updateHud(): void {
-    this.elapsedMs += this.game.loop.delta;
     const ratio = Phaser.Math.Clamp(this.player.stats.hp / this.player.stats.maxHp, 0, 1);
     this.hpBarFill.width = (this.hpBarBg.width - 4) * ratio;
     const color = ratio > 0.5 ? 0x2ee6a8 : ratio > 0.25 ? 0xffb020 : 0xff5c5c;
@@ -433,6 +536,17 @@ private updateXpOrbs(delta: number): void {
     const m = Math.floor(sec / 60);
     const s = sec % 60;
     this.timerText.setText(`${m}:${s.toString().padStart(2, '0')}`);
+
+    if (this.boss && this.boss.active) {
+      this.bossHpBarBg.setVisible(true);
+      this.bossHpBarFill.setVisible(true);
+      this.bossLabel.setVisible(true);
+      this.bossHpBarFill.width = (this.bossHpBarBg.width - 4) * Phaser.Math.Clamp(this.boss.hpRatio, 0, 1);
+    } else if (this.boss) {
+      this.bossHpBarBg.setVisible(false);
+      this.bossHpBarFill.setVisible(false);
+      this.bossLabel.setVisible(false);
+    }
   }
 
   private createHint(viewW: number, viewH: number): void {

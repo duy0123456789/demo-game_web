@@ -4,13 +4,14 @@ import { BootScene } from './scenes/BootScene';
 import { PreloadScene } from './scenes/PreloadScene';
 import { MainMenuScene } from './scenes/MainMenuScene';
 import { GameScene } from './scenes/GameScene';
+import { ResultScene } from './scenes/ResultScene';
 
 let game: Phaser.Game | null = null;
 let lastPortrait = isPortrait();
 
 function boot(): void {
   game = new Phaser.Game(
-    createGameConfig([BootScene, PreloadScene, MainMenuScene, GameScene]),
+    createGameConfig([BootScene, PreloadScene, MainMenuScene, GameScene, ResultScene]),
   );
   (window as unknown as { __pg?: Phaser.Game }).__pg = game;
 }
