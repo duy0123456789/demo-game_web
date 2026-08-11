@@ -3,6 +3,11 @@ import Phaser from 'phaser';
 export const LANDSCAPE_SIZE = { width: 1280, height: 720 } as const;
 export const PORTRAIT_SIZE = { width: 720, height: 1280 } as const;
 
+export const WORLD = {
+  width: 5000,
+  height: 5000,
+} as const;
+
 export const SceneKey = {
   Boot: 'BootScene',
   Preload: 'PreloadScene',
@@ -62,6 +67,13 @@ export function createGameConfig(
     },
     render: {
       powerPreference: 'high-performance',
+    },
+    physics: {
+      default: 'arcade',
+      arcade: {
+        gravity: { x: 0, y: 0 },
+        debug: false,
+      },
     },
     input: {
       activePointers: 3,

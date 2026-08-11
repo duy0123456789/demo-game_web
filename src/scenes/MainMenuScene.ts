@@ -10,7 +10,7 @@ interface MenuButtonDef {
 }
 
 const MENU_BUTTONS: MenuButtonDef[] = [
-  { label: 'PLAY', run: (s) => s.toast('COMING SOON', '#ffb020') },
+  { label: 'PLAY', run: (s) => s.showPlay() },
   { label: 'HEROES', run: (s) => s.toast('COMING SOON', '#ffb020') },
   { label: 'WEAPONS', run: (s) => s.toast('COMING SOON', '#ffb020') },
   { label: 'UPGRADES', run: (s) => s.toast('COMING SOON', '#ffb020') },
@@ -167,6 +167,10 @@ export class MainMenuScene extends Phaser.Scene {
         .setAlpha(0.18);
       this.dots.push({ sprite: rect, speed: Phaser.Math.FloatBetween(8, 30) });
     }
+  }
+
+  showPlay(): void {
+    this.scene.start(SceneKey.Game);
   }
 
   toast(message: string, color: string): void {

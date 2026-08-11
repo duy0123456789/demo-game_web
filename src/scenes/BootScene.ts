@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { SceneKey } from '../config/gameConfig';
+import { buildPixelSprite } from '../utils/pixelSprite';
 
 export const TEX = {
   pixel: 'tex-pixel',
@@ -7,18 +8,51 @@ export const TEX = {
   coin: 'tex-coin',
   gem: 'tex-gem',
   star: 'tex-star',
+  player: 'sprite-player',
+  rock: 'sprite-rock',
 } as const;
 
-function starPoints(cx: number, cy: number, outer: number, inner: number, spikes: number): Phaser.Geom.Point[] {
-  const points: Phaser.Geom.Point[] = [];
-  const step = Math.PI / spikes;
-  for (let i = 0; i < spikes * 2; i += 1) {
-    const radius = i % 2 === 0 ? outer : inner;
-    const angle = i * step - Math.PI / 2;
-    points.push(new Phaser.Geom.Point(cx + Math.cos(angle) * radius, cy + Math.sin(angle) * radius));
-  }
-  return points;
-}
+const PLAYER_ROWS: string[] = [
+  '....HHHHHHHH....',
+  '...HHHHHHHHHH...',
+  '..HHHHHHHHHHHH..',
+  '..SSSSSSSSSSSS..',
+  '..SSEESSSSEESS..',
+  '.AAAAAAAAAAAAAA.',
+  '.A..GGGGGGGG..A.',
+  '.A..GGGGGGGG..A.',
+  '.A..LLLLLLLL..A.',
+  '.AAAAAAAAAAAAAA.',
+  '..AADDDDDDDDAA..',
+  '...BBBBBBBBBB...',
+  '...BBBBBBBBBB...',
+];
+
+const PLAYER_PALETTE: Record<string, number> = {
+  H: 0x27406e,
+  S: 0xe8b878,
+  E: 0x0b0b16,
+  A: 0x1f7a5c,
+  L: 0x2ea97f,
+  G: 0x9fb3c8,
+  D: 0x0f3d2e,
+  B: 0x5a4630,
+};
+
+const ROCK_ROWS: string[] = [
+  '....GGGG....',
+  '...GGGGGG...',
+  '..GGGGGGGG..',
+  '..GGWWGGGG..',
+  '..GGGGGDDD..',
+  '...GGGGDD...',
+];
+
+const ROCK_PALETTE: Record<string, number> = {
+  G: 0x4a5878,
+  W: 0x6b7c9e,
+  D: 0x333c55,
+};
 
 export class BootScene extends Phaser.Scene {
   constructor() {
@@ -31,6 +65,8 @@ export class BootScene extends Phaser.Scene {
     this.createCoinTexture();
     this.createGemTexture();
     this.createStarTexture();
+    buildPixelSprite(this, TEX.player, PLAYER_ROWS, PLAYER_PALETTE);
+    buildPixelSprite(this, TEX.rock, ROCK_ROWS, ROCK_PALETTE);
     this.scene.start(SceneKey.Preload);
   }
 
@@ -117,4 +153,21 @@ export class BootScene extends Phaser.Scene {
     g.generateTexture(TEX.star, size, size);
     g.destroy();
   }
+}
+
+function starPoints(
+  cx: number,
+  cy: number,
+  outer: number,
+  inner: number,
+  spikes: number,
+): Phaser.Geom.Point[] {
+  const points: Phaser.Geom.Point[] = [];
+  const step = Math.PI / spikes;
+  for (let i = 0; i < spikes * 2; i += 1) {
+    const radius = i % 2 === 0 ? outer : inner;
+    const angle = i * step - Math.PI / 2;
+    points.push(new Phaser.Geom.Point(cx + Math.cos(angle) * radius, cy + Math.sin(angle) * radius));
+  }
+  return points;
 }
