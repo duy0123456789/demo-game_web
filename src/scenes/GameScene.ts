@@ -237,7 +237,7 @@ export class GameScene extends Phaser.Scene {
     }
 
     const pointer = this.input.activePointer;
-    if (!this.useJoystick && !this.isTouchDevice && pointer.primaryDown) {
+    if (!this.useJoystick && !this.isTouchDevice && pointer.x >= 0 && pointer.y >= 0) {
       const worldPt = this.cameras.main.getWorldPoint(pointer.x, pointer.y, new Phaser.Math.Vector2());
       const dx = worldPt.x - this.player.x;
       const dy = worldPt.y - this.player.y;
@@ -350,7 +350,7 @@ private updateXpOrbs(delta: number): void {
   }
 
   private gainXp(rawValue: number): void {
-    this.xp += Math.round(rawValue * this.player.stats.xpMultiplier * 2);
+    this.xp += Math.round(rawValue * this.player.stats.xpMultiplier * 4);
     let leveled = false;
     while (this.xp >= this.xpToNext) {
       this.xp -= this.xpToNext;
@@ -599,7 +599,7 @@ private updateXpOrbs(delta: number): void {
   private createHint(viewW: number, viewH: number): void {
     const msg = this.isTouchDevice
       ? 'TOUCH TO MOVE'
-      : 'WASD / ARROWS TO MOVE -- HOLD MOUSE TO WALK';
+      : 'WASD / ARROWS TO MOVE -- MOVE MOUSE TO WALK';
     const t = this.add
       .text(viewW / 2, viewH - 90, msg, {
         fontFamily: UI.fontFallback,
