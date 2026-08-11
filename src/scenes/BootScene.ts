@@ -10,6 +10,7 @@ export const TEX = {
   star: 'tex-star',
   player: 'sprite-player',
   rock: 'sprite-rock',
+  enemyCircle: 'sprite-enemy',
 } as const;
 
 const PLAYER_ROWS: string[] = [
@@ -54,6 +55,23 @@ const ROCK_PALETTE: Record<string, number> = {
   D: 0x333c55,
 };
 
+const ENEMY_ROWS: string[] = [
+  '....FFFFFF....',
+  '..FFFFFFFF....',
+  '..FFFFFFFFF...',
+  '.F.FFFFFFFF..F',
+  '.FFFFFFFFFFFF.',
+  '.FF.FFFFFF.FF.',
+  '.FFFFFFFFFFFF.',
+  '...FFFF.FFF...',
+  '....FFF.FFF...',
+  '.....FF..FF...',
+];
+
+const ENEMY_PALETTE: Record<string, number> = {
+  F: 0xffffff,
+};
+
 export class BootScene extends Phaser.Scene {
   constructor() {
     super(SceneKey.Boot);
@@ -67,6 +85,7 @@ export class BootScene extends Phaser.Scene {
     this.createStarTexture();
     buildPixelSprite(this, TEX.player, PLAYER_ROWS, PLAYER_PALETTE);
     buildPixelSprite(this, TEX.rock, ROCK_ROWS, ROCK_PALETTE);
+    buildPixelSprite(this, TEX.enemyCircle, ENEMY_ROWS, ENEMY_PALETTE);
     this.scene.start(SceneKey.Preload);
   }
 
