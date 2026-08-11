@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { SceneKey } from '../config/gameConfig';
 import { buildPixelSprite } from '../utils/pixelSprite';
+import { soundManager } from '../systems/SoundManager';
 
 export const TEX = {
   pixel: 'tex-pixel',
@@ -103,6 +104,7 @@ export class BootScene extends Phaser.Scene {
   }
 
   create(): void {
+    soundManager.init(this.game);
     this.createPixelTexture();
     this.createGridTexture();
     this.createCoinTexture();

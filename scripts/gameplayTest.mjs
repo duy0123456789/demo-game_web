@@ -272,6 +272,41 @@ async function main() {
   });
   console.log('META IN GAME TEST:', JSON.stringify(metaInGame));
 
+  await page.evaluate(() => {
+    const scene = window.__pg.scene.getScene('GameScene');
+    const enemy = scene.enemies.getChildren(true)[0];
+    if (enemy) {
+      enemy.setPosition(scene.player.x + 150, scene.player.y);
+      enemy.stats.hp = 1;
+    }
+  });
+  await wait(350);
+  const particleTest = await page.evaluate(() => {
+    const scene = window.__pg.scene.getScene('GameScene');
+    return { aliveParticles: scene.deathParticles.getAliveParticleCount() };
+  });
+  console.log('PARTICLE TEST:', JSON.stringify(particleTest));
+
+  await page.evaluate(() => {
+    window.__pg.scene.getScene('GameScene').scene.start('SettingsScene');
+  });
+  await wait(500);
+  const settingsToggle = await page.evaluate(() => {
+    const s = window.__pg.scene.getScene('SettingsScene');
+    const btn = s.children.list.find(
+      (g) => g.type === 'Container' && g.list.some((t) => t.type === 'Text' && /SOUND/.test(t.text)),
+    );
+    if (!btn) return { found: false };
+    btn.emit('pointerover');
+    btn.emit('pointerup');
+    return { found: true };
+  });
+  await wait(500);
+  const settingsCheck = await page.evaluate(() => {
+    return { soundOn: window.__save.soundOn, label: window.__pg.scene.getScene('SettingsScene').children.list.some((g) => g.type === 'Container' && g.list.some((t) => t.type === 'Text' && /SOUND: OFF/.test(t.text))) };
+  });
+  console.log('SETTINGS TEST:', JSON.stringify({ settingsToggle, settingsCheck }));
+
   console.log('errors:', errs.length);
   for (const e of errs) console.log('ERR:', e);
 

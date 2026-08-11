@@ -7,6 +7,7 @@ import { MainMenuScene } from './scenes/MainMenuScene';
 import { HeroScene } from './scenes/HeroScene';
 import { WeaponScene } from './scenes/WeaponScene';
 import { UpgradeScene } from './scenes/UpgradeScene';
+import { SettingsScene } from './scenes/SettingsScene';
 import { GameScene } from './scenes/GameScene';
 import { ResultScene } from './scenes/ResultScene';
 
@@ -15,7 +16,7 @@ let lastPortrait = isPortrait();
 
 function boot(): void {
   game = new Phaser.Game(
-    createGameConfig([BootScene, PreloadScene, MainMenuScene, HeroScene, WeaponScene, UpgradeScene, GameScene, ResultScene]),
+    createGameConfig([BootScene, PreloadScene, MainMenuScene, HeroScene, WeaponScene, UpgradeScene, SettingsScene, GameScene, ResultScene]),
   );
   (window as unknown as { __pg?: Phaser.Game; __save?: typeof saveManager }).__pg = game;
   (window as unknown as { __save?: typeof saveManager }).__save = saveManager;

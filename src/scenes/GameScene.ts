@@ -16,6 +16,7 @@ import type { UpgradeKind, UpgradeOption } from '../systems/UpgradeSystem';
 import { weaponById } from '../data/weapons';
 import { heroById } from '../data/heroes';
 import { saveManager } from '../systems/SaveManager';
+import { soundManager } from '../systems/SoundManager';
 import { Joystick } from '../ui/Joystick';
 import { UpgradePanel } from '../ui/UpgradePanel';
 import type { ResultData } from './ResultScene';
@@ -66,6 +67,8 @@ export class GameScene extends Phaser.Scene {
   private bossLabel!: Phaser.GameObjects.Text;
   private runOver = false;
   private coinsAtStart = 0;
+  private deathParticles!: Phaser.GameObjects.Particles.ParticleEmitter;
+  private hurtFlash!: Phaser.GameObjects.Rectangle;
   private isTouchDevice = false;
   private useJoystick = false;
 
@@ -85,6 +88,17 @@ export class GameScene extends Phaser.Scene {
 
     this.createGround(worldW, worldH);
     this.createDecorations(worldW, worldH);
+    this.deathParticles = this.add.particles(0, 0, TEX.pixel, {
+      speed: { min: 40, max: 150 },
+      scale: { start: 2.4, end: 0 },
+      lifespan: 340,
+      alpha: { start: 1, end: 0 },
+      emitting: false,
+    });
+    this.hurtFlash = this.add
+      .rectangle(width / 2, height / 2, width, height, 0xff2020, 0)
+      .setScrollFactor(0)
+      .setDepth(1500);
 
     this.player = new Player(this, worldW / 2, worldH / 2);
     this.applyMetaStats();
@@ -240,7 +254,13 @@ export class GameScene extends Phaser.Scene {
   private onEnemyKilled(enemy: Enemy, xpValue: number, x: number, y: number): void {
     this.killCount += 1;
     saveManager.addCoins(1);
+    soundManager.kill();
+    const count = enemy instanceof Boss ? 46 : 12;
+    const particles = this.deathParticles;
+    particles.particleTint = enemy.colorValue;
+    particles.emitParticleAt(x, y, count);
     if (enemy instanceof Boss) {
+      this.cameras.main.shake(260, 0.01);
       this.finishRun(true);
       return;
     }
@@ -262,6 +282,7 @@ export class GameScene extends Phaser.Scene {
     this.enemies.add(boss);
     this.boss = boss;
     this.cameras.main.shake(200, 0.006);
+    soundManager.bossSpawn();
 
     const skip = this.isTouchDevice ? 22 : 26;
     const warn = this.add
@@ -287,6 +308,8 @@ export class GameScene extends Phaser.Scene {
     this.runOver = true;
     this.levelUpSequence = true;
     this.physics.pause();
+    if (victory) soundManager.victory();
+    else soundManager.defeat();
     const result: ResultData = {
       victory,
       level: this.level,
@@ -320,6 +343,7 @@ private updateXpOrbs(delta: number): void {
         const value = (orb.getData('xpValue') as number) ?? 1;
         orb.setActive(false);
         orb.setVisible(false);
+        soundManager.pickup();
         this.gainXp(value);
       }
     }
@@ -340,6 +364,7 @@ private updateXpOrbs(delta: number): void {
   private triggerLevelUp(): void {
     if (this.levelUpSequence) return;
     this.levelUpSequence = true;
+    soundManager.levelUp();
     this.time.delayedCall(90, () => {
       if (!this.scene.isActive()) return;
       const options = this.rollUpgradeOptions();
@@ -449,6 +474,9 @@ private updateXpOrbs(delta: number): void {
     this.invulnTimer = INVULN_MS;
     this.player.setTint(0xff8888);
     this.cameras.main.shake(120, 0.004);
+    soundManager.hurt();
+    this.hurtFlash.setAlpha(0.28);
+    this.tweens.add({ targets: this.hurtFlash, alpha: 0, duration: 260 });
     this.time.delayedCall(INVULN_MS, () => {
       if (this.player && this.player.active) this.player.clearTint();
     });

@@ -14,7 +14,7 @@ const MENU_BUTTONS: MenuButtonDef[] = [
   { label: 'HEROES', run: (s) => s.scene.start(SceneKey.Heroes) },
   { label: 'WEAPONS', run: (s) => s.scene.start(SceneKey.Weapons) },
   { label: 'UPGRADES', run: (s) => s.scene.start(SceneKey.Upgrades) },
-  { label: 'SETTINGS', run: (s) => s.toast('COMING SOON', '#ffb020') },
+  { label: 'SETTINGS', run: (s) => s.scene.start(SceneKey.Settings) },
 ];
 
 interface FloatDot {

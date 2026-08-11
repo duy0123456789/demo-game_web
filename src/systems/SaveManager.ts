@@ -6,6 +6,7 @@ export interface SaveData {
   weaponsOwned: string[];
   weaponEquipped: string;
   permUpgrades: Record<string, number>;
+  soundOn: boolean;
 }
 
 const SAVE_KEY = 'pixel-gunner-save-v1';
@@ -21,6 +22,7 @@ function defaultSave(): SaveData {
     weaponsOwned: [DEFAULT_WEAPON],
     weaponEquipped: DEFAULT_WEAPON,
     permUpgrades: {},
+    soundOn: true,
   };
 }
 
@@ -58,6 +60,7 @@ export class SaveManager {
           parsed.permUpgrades && typeof parsed.permUpgrades === 'object'
             ? parsed.permUpgrades
             : base.permUpgrades,
+        soundOn: typeof parsed.soundOn === 'boolean' ? parsed.soundOn : base.soundOn,
       };
     } catch {
       return defaultSave();
@@ -139,6 +142,15 @@ export class SaveManager {
 
   setPermLevel(id: string, level: number): void {
     this.data.permUpgrades[id] = level;
+    this.save();
+  }
+
+  get soundOn(): boolean {
+    return this.data.soundOn;
+  }
+
+  setSoundOn(on: boolean): void {
+    this.data.soundOn = on;
     this.save();
   }
 

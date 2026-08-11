@@ -5,6 +5,7 @@ import { Enemy } from '../entities/Enemy';
 import { Projectile } from '../entities/Projectile';
 import { TEX } from '../scenes/BootScene';
 import { UI } from '../config/gameConfig';
+import { soundManager } from './SoundManager';
 
 export interface CombatCallbacks {
   onEnemyKilled: (enemy: Enemy, xpValue: number, x: number, y: number) => void;
@@ -80,6 +81,7 @@ export class CombatSystem {
       this.spawnProjectile(px, py, dir + offset);
     }
     this.spawnMuzzleFlash(px + Math.cos(dir) * 22, py + Math.sin(dir) * 22);
+    soundManager.shoot();
   }
 
   private spawnProjectile(x: number, y: number, angle: number): void {
@@ -146,6 +148,7 @@ export class CombatSystem {
     }
     enemy.takeDamage(dmg);
     this.showDamageNumber(enemy.x, enemy.y - enemy.radius, dmg, crit);
+    soundManager.hit();
 
     const kb = projectile.getKnockback();
     if (kb > 0) {

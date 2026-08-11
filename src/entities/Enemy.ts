@@ -84,6 +84,10 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
     return Math.max(0, this.stats.hp / this.stats.maxHp);
   }
 
+  get colorValue(): number {
+    return this.baseColor;
+  }
+
   private drawHpBar(): void {
     const g = this.hpBar;
     g.clear();
